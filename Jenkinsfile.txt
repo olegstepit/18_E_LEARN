@@ -34,7 +34,7 @@ pipeline  {
             steps {
                 echo " ============== pushing image =================="
                 sh '''
-                docker push oleg222/website:latest
+                docker push oleg222/zabbix1 
                 '''
             }
         }
@@ -42,7 +42,7 @@ pipeline  {
             steps {
                 echo " ============== start server =================="
                 sh '''
-                docker run -d --restart=always --name website -p 80:80 oleg222/website
+                docker run -d --restart=always --name zabbix1  -p 80:80 oleg222/zabbix1 
                 '''
             }
         }
@@ -51,7 +51,7 @@ pipeline  {
             steps {
                 echo " ============== stopping all images =================="
                 sh '''
-                docker stop website
+                docker stop zabbix1 
                 '''
             }
         } 
@@ -59,7 +59,7 @@ pipeline  {
             steps {
                 echo " ============== removing all docker containers =================="
                 sh '''
-                docker rm  website 
+                docker rm  zabbix1 
                 '''
             }
         }
@@ -67,7 +67,7 @@ pipeline  {
             steps {
                 echo " ============== start server =================="
                 sh '''
-                docker run -d --restart=always --name website -p 80:80 oleg222/website
+                docker run -d --restart=always --name zabbix1  -p 80:80 oleg222/zabbix1 
                 '''
             }
         }
