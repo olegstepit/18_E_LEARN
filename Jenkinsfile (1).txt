@@ -55,7 +55,7 @@ pipeline  {
                 -v /var/lib/zabbix/timezone:/etc/timezone \
                 -v /var/lib/zabbix/localtime:/etc/localtime \
                 -p 10051:10051 \
-                -doleg222/zabk:serv
+                -d oleg222/zabk:serv
                 '''
             }
         }
