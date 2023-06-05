@@ -1,6 +1,6 @@
-#!groovy
+  #!groovy
 //  groovy Jenkinsfile
-properties([disableConcurrentBuilds()])
+properties([disableConcurrentBuilds()])\
 
 pipeline  {
         agent { 
@@ -12,12 +12,66 @@ pipeline  {
         timestamps()
     }
     stages {
-        stage("Create docker image") {
+        stage("Git clone") {
             steps {
-                echo 'Creating docker image ...'
-                dir('.'){
-                    sh "docker build --no-cache -t oleg222/website  . "
-                }
+                sh '''
+                cd /home/dik/gitr/
+                git clone https://github.com/olegstepit/18_E_LEARN         
+                '''
+            }
+        }    
+        stage("Build") {
+            steps {
+                sh '''
+                cd /home/dik/gitr/jenk/Postgres
+                docker build -t oleg222/zabk:post .
+                cd /home/dik/gitr/jenk/Zab-serv
+                docker build -t oleg222/zabk:serv .
+                cd /home/dik/gitr/jenk/Zab-web
+                docker build -t oleg222/zabk:web .
+                '''
+            }
+        } 
+        stage("Postgres") {
+            steps {
+                sh '''
+                docker network create zabbix-net
+                docker run \
+                --name zabbix-postgres \
+                --network zabbix-net \
+                -v /var/lib/zabbix/timezone:/etc/timezone \
+                -v /var/lib/zabbix/localtime:/etc/localtime \
+                -d oleg222/zabk:post
+                '''
+            }
+        }
+        stage("Zab-serv") {
+            steps {
+                sh '''
+                docker run \
+                --name zabbix-server \
+                --network zabbix-net \
+                -v /var/lib/zabbix/alertscripts:/usr/lib/zabbix/alertscripts \
+                -v /var/lib/zabbix/timezone:/etc/timezone \
+                -v /var/lib/zabbix/localtime:/etc/localtime \
+                -p 10051:10051 \
+                -d oleg222/zabk:serv
+                '''
+            }
+        }
+        stage("Zab-web") {
+            steps {
+                sh '''
+                docker run \
+                --name zabbix-web \
+                -p 80:8080 \
+                -p 443:8443 \
+                --network zabbix-net \
+                -v /var/lib/zabbix/timezone:/etc/timezone \
+                -v /var/lib/zabbix/localtime:/etc/localtime \
+                -e PHP_TZ="Europe/Kiev" \
+                -d oleg222/zabk:web
+                '''
             }
         }
         stage("docker login") {
@@ -34,34 +88,11 @@ pipeline  {
             steps {
                 echo " ============== pushing image =================="
                 sh '''
-                docker push oleg222/website:latest
-                '''
-            }
-        }
-        stage("docker stop") {
-            steps {
-                echo " ============== stopping all images =================="
-                sh '''
-                docker stop website
-                '''
-            }
-        } 
-        stage("docker remove") {
-            steps {
-                echo " ============== removing all docker containers =================="
-                sh '''
-                docker rm  website 
-                '''
-            }
-        }
-        stage("docker run") {
-            steps {
-                echo " ============== start server =================="
-                sh '''
-                docker run -d --restart=always --name website -p 80:80 oleg222/website
+                docker push oleg222/zabk:post
+                docker push oleg222/zabk:serv
+                docker push oleg222/zabk:web
                 '''
             }
         }
     }
 }
-
