@@ -1,4 +1,4 @@
-#!groovy
+ #!groovy
 //  groovy Jenkinsfile
 properties([disableConcurrentBuilds()])\
 
@@ -12,78 +12,66 @@ pipeline  {
         timestamps()
     }
     stages {
+        stage("Git clone") {
+            steps {
+                sh '''
+                cd /home/dik/gitr/
+                git clone https://github.com/olegstepit/18_E_LEARN         
+                '''
+            }
+        }    
+        stage("Build") {
+            steps {
+                sh '''
+                cd /home/dik/gitr/jenk/Postgres
+                docker build -t oleg222/zabk:post .
+                cd /home/dik/gitr/jenk/Zab-serv
+                docker build -t oleg222/zabk:serv .
+                cd /home/dik/gitr/jenk/Zab-web
+                docker build -t oleg222/zabk:web .
+                '''
+            }
+        } 
         stage("Postgres") {
             steps {
                 sh '''
                 docker network create zabbix-net
-                docker run -d\
+                docker run \
                 --name zabbix-postgres \
                 --network zabbix-net \
                 -v /var/lib/zabbix/timezone:/etc/timezone \
                 -v /var/lib/zabbix/localtime:/etc/localtime \
-                -e POSTGRES_PASSWORD=zabbix \
-                -e POSTGRES_USER=zabbix \
-                -d postgres:alpine
+                -d oleg222/zabk:post
                 '''
-            }
-        }
-        stage("Create docker image Postgres") {
-            steps {
-                echo 'Creating docker image ...'
-                dir('.'){
-                    sh "docker build --no-cache -t oleg222/zabbix:pos  ."
-                }
             }
         }
         stage("Zab-serv") {
             steps {
                 sh '''
-                docker run
-                --name zabbix-server
-                --network zabbix-net
-                -v /var/lib/zabbix/alertscripts:/usr/lib/zabbix/alertscripts
-                -v /var/lib/zabbix/timezone:/etc/timezone
-                -v /var/lib/zabbix/localtime:/etc/localtime
-                -p 10051:10051 
-                -e DB_SERVER_HOST="zabbix-postgres"
-                -e POSTGRES_USER="zabbix"
-                -e POSTGRES_PASSWORD="zabbix"
-                -d zabbix/zabbix-server-pgsql:alpine-latest
+                docker run \
+                --name zabbix-server \
+                --network zabbix-net \
+                -v /var/lib/zabbix/alertscripts:/usr/lib/zabbix/alertscripts \
+                -v /var/lib/zabbix/timezone:/etc/timezone \
+                -v /var/lib/zabbix/localtime:/etc/localtime \
+                -p 10051:10051 \
+                -doleg222/zabk:serv
                 '''
-            }
-        }
-        stage("Create docker image Zab-serv") {
-            steps {
-                echo 'Creating docker image ...'
-                dir('.'){
-                    sh "docker build --no-cache -t oleg222/zabbix:serv  ."
-                }
             }
         }
         stage("Zab-web") {
             steps {
                 sh '''
-                docker run
-                --name zabbix-web
-                -p 80:8080 -p 443:8443
-                --network zabbix-net
-                -e DB_SERVER_HOST="zabbix-postgres"
-                -v /var/lib/zabbix/timezone:/etc/timezone
-                -v /var/lib/zabbix/localtime:/etc/localtime
-                -e POSTGRES_USER="zabbix"
-                -e POSTGRES_PASSWORD="zabbix"
-                -e ZBX_SERVER_HOST="zabbix-server"
-                -e PHP_TZ="Europe/Kiev"
-                -d zabbix/zabbix-web-nginx-pgsql:alpine-latest
+                docker run \
+                --name zabbix-web \
+                -p 80:8080 \
+                -p 443:8443 \
+                --network zabbix-net \
+                -v /var/lib/zabbix/timezone:/etc/timezone \
+                -v /var/lib/zabbix/localtime:/etc/localtime \
+                -e PHP_TZ="Europe/Kiev" \
+                -d oleg222/zabk:web
                 '''
-            }
-        }
-        stage("Create docker image Zab-web") {
-            steps {
-                echo 'Creating docker image ...'
-                dir('.'){
-                    sh "docker build --no-cache -t oleg222/zabbix:webm  . "
-                }
             }
         }
         stage("docker login") {
@@ -100,9 +88,9 @@ pipeline  {
             steps {
                 echo " ============== pushing image =================="
                 sh '''
-                docker push oleg222/zabbix:pos 
-                docker push oleg222/zabbix:serv
-                docker push oleg222/zabbix:webm 
+                docker push oleg222/zabk:post
+                docker push oleg222/zabk:serv
+                docker push oleg222/zabk:web
                 '''
             }
         }
